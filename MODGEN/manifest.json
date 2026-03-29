@@ -1,0 +1,9 @@
+{
+  "name": "FastSwim",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/Turbero/valheim-FastSwim",
+  "description": "< Commissioned mod > Press the key to Run while swimming and do it at faster speed while being pressed. Both base and fast speed options configurable.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}
