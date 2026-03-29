@@ -1,9 +1,12 @@
-﻿using HarmonyLib;
+﻿using System.Collections.Generic;
+using HarmonyLib;
 
 namespace FastSwim
 {
     public static class SwimmingValues
     {
+        public static Dictionary<Player, bool> sprintStates = new();
+        
         public static float vanillaSwimDepth;
         public static float vanillaSwimSpeed;
         public static float vanillaSwimTurnSpeed;
@@ -21,27 +24,37 @@ namespace FastSwim
     [HarmonyPatch(typeof (Player), "Awake")]
     public static class Player_Awake_Patch
     {
+        private static bool initialized = false;
         public static void Postfix(Player __instance)
         {
+            if (initialized) return;
+            
             Logger.Log("Storing vanilla initial swimming values");
             SwimmingValues.LogPlayerSwimValues(__instance, "vanilla");
             SwimmingValues.vanillaSwimDepth = __instance.m_swimDepth;
             SwimmingValues.vanillaSwimSpeed = __instance.m_swimSpeed;
             SwimmingValues.vanillaSwimTurnSpeed = __instance.m_swimTurnSpeed;
             SwimmingValues.vanillaSwimAcceleration = __instance.m_swimAcceleration;
+
+            initialized = true;
         }
     }
 
     [HarmonyPatch(typeof(Player), "Update")]
     public class SwimSpeedPatch
     {
-        private static bool wasSprinting = false;
+        private static readonly Dictionary<Player, bool> sprintStates = new();
 
         public static void Prefix(Player __instance)
         {
             if (!__instance.IsSwimming()) return;
 
-            bool isSprinting = ZInput.GetButton("Run");
+            bool isSprinting = ZInput.GetButton("Run") || ZInput.GetButton("JoyRun");
+            
+            if (!sprintStates.TryGetValue(__instance, out bool wasSprinting))
+            {
+                wasSprinting = false;
+            }
 
             if (isSprinting && !wasSprinting && ConfigurationFile.fastSwimAttributesActivate.Value)
             {
@@ -74,7 +87,22 @@ namespace FastSwim
                 SwimmingValues.LogPlayerSwimValues(__instance, "after");
             }
 
-            wasSprinting = isSprinting;
+            sprintStates[__instance] = isSprinting;
+        }
+        
+        public static void RemovePlayer(Player player)
+        {
+            sprintStates.Remove(player);
+        }
+    }
+    
+    [HarmonyPatch(typeof(Player), "OnDestroy")]
+    public static class Player_Destroy_Patch
+    {
+        public static void Prefix(Player __instance)
+        {
+            Logger.Log("Cleaning sprint state for player");
+            SwimSpeedPatch.RemovePlayer(__instance);
         }
     }
 }
